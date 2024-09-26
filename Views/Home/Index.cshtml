@@ -1,8 +1,260 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿@using X.PagedList
+@model X.PagedList.IPagedList<SalesOrder.ViewModels.OrderDataViewModel>
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+@Html.AntiForgeryToken()
+
+<style>
+    th {
+        text-align: center;
+        font-size: small;
+    }
+    /* Custom styles for the modal dialog */
+    .modal-dialog-custom {
+        max-width: 800px; /* Set your desired width */
+    }
+
+    .my-custom-card {
+        border: 1px solid #343a40; /* Dark border color */
+        border-radius: 0.25rem; /* Optional: adjust the border radius */
+    }
+
+        .my-custom-card .card-body {
+            background-color: #ffffff; /* Optional: background color for the card body */
+        }
+
+</style>
+
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <div class="card my-custom-card text-white" style="background-color:steelblue;">
+            <form>
+                <div class="card-header">
+                    <div class="row" style="text-align:center;">
+                        <div class="col-lg-3 col-md-3">
+                            <div class="form-group">
+                                Keywords
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                            <div class="form-group input-group input-group-sm">
+                                <input type="text" placeholder="Input Here" aria-label="Keyword" class="form-control form-control-sm" name="keyword" value="@ViewData["CurrentKeyword"]" />
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                            <div class="form-group">
+                                Order Date
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                            <div class="form-group input-group input-group-sm">
+                                <input type="date" id="orderDate" placeholder="Pick Date" aria-label="OrderDate" class="form-control form-control-sm datepicker" name="orderDate" value="@ViewData["CurrentOrderDate"]" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-lg-12 col-md-12 justify-content-between">
+                            <right>
+                                <button type="submit" value="Search" class="btn float-right text-white" asp-action="Index" formmethod="get" style="background-color:midnightblue;">
+                                    Search
+                                </button>
+                            </right>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <div class="card">
+            <form>
+                <div class="card-header" style="background-color:steelblue;">
+                    <input type="hidden" name="sortOrder" value="@ViewData["CurrentSort"]" />
+                    <div class="row">
+                        <div class="col-lg-6 col-md-6">
+                            <a class="btn text-white" asp-action="Create" style="background-color:darkred;"> Add New Data</a>
+                            <a asp-action="ExportToExcel" class="btn text-white" style="background-color:darkblue;">
+                                <i class="fas fa-file-excel"></i> Export to Excel
+                            </a>
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <form method="post" asp-action="Create" asp-controller="Home">
+                <div class="modal fade" id="modal-create">
+                    <div class="modal-dialog modal-dialog-custom">
+                        <div class="modal-content bg-primary">
+                            <div class="modal-header">
+                                <h4 class="modal-title"><i class="fas fa-plus"></i> Create</h4>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="card card-info">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label style="color:black;">Sales Order</label>
+                                                            <input name="SalesOrder" type="text" placeholder="Input Sales Order Here" class="form-control">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label style="color:black;">Order Date</label>
+                                                            <input name="OrderDate" type="date" placeholder="Input Order Date Here" class="form-control">
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <label style="color:black;">Customer</label>
+                                                            <input name="Customer" type="text" placeholder="Input Customer Here" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- /.card-body -->
+                                        </div>
+                                        <!-- /.card -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer justify-content-between">
+                                <button type="button" class="btn btn-outline-light" data-dismiss="modal">Cancel</button>
+                                <input type="submit" value="Create New Sales Order" class="btn btn-outline-light float-right">
+                            </div>
+                        </div>
+                        <!-- /.modal-content -->
+                    </div>
+                    <!-- /.modal-dialog -->
+                </div>
+            </form>
+            <div class="card-body table-responsive p-0">
+                <div class="row">
+                    <div class="col-md-12">
+                        <table id="tableList" class="table table-bordered table-striped" style="font-size:small;text-align:center;width:100%">
+                            <thead style="background-color:midnightblue;">
+                                <tr>
+                                    <th width="3%" class="text-white">No</th>
+                                    <th width="7%" class="text-white"><a class="text-white" href="#">Action</a></th>
+                                    <th width="30%" class="text-white">Sales Order</th>
+                                    <th width="30%" class="text-white">Order Date</th>
+                                    <th width="30%" class="text-white">Customer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            @item.Id
+                                        </td>
+                                        <td align="center">
+                                            <a asp-action="Edit" type="button" class="btn btn-info btn-sm text-white" asp-route-Id="@item.Id">
+                                                <i class="fas fa-pencil-alt"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-danger btn-sm text-white" data-toggle="modal" data-target="#modal-delete-@item.Id">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            @item.SalesOrder
+                                        </td>
+                                        <td>
+                                            @item.OrderDate.ToString("dd/M/yyyy")
+                                        </td>
+                                        <td>
+                                            @item.CustomerName
+                                        </td>
+                                    </tr>
+                                    <form method="post" asp-action="Delete" asp-controller="Home">
+                                        <input type="hidden" name="Id" value="@item.Id">
+                                        <div class="modal fade" id="modal-delete-@item.Id">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content bg-danger">
+                                                    <div class="modal-header">
+                                                        <h4 class="modal-title"><i class="fas fa-trash"></i> Delete</h4>
+                                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                            <span aria-hidden="true">&times;</span>
+                                                        </button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="row">
+                                                            <div class="col-md-3" style="text-align:center;">
+                                                                <i class="fas fa-exclamation-triangle" style="color: #ffc800;font-size:50px;"></i>
+                                                            </div>
+                                                            <div class="col-md-8">
+                                                                <p style="text-align:center;font-size:11pt;">
+                                                                    Are you sure want to DELETE this Sales Order? <br>
+                                                                    This action cannot be undone!
+                                                                </p>
+                                                            </div>
+                                                            <div class="col-md-1"></div>
+                                                        </div>
+                                                        <div class="modal-footer justify-content-between">
+                                                            <button type="button" class="btn btn-outline-light" data-dismiss="modal">No</button>
+                                                            <input type="submit" value="Yes" class="btn btn-outline-light float-right">
+                                                        </div>
+                                                    </div>
+                                                    <!-- /.modal-content -->
+                                                </div>
+                                                <!-- /.modal-dialog -->
+                                            </div>
+                                        </div>
+                                    </form>
+                                    <!-- /.modal -->
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) - @Model.PageCount of @Model.TotalItemCount items
+                    </div>
+                    <nav>
+                        <ul class="pagination justify-content-center">
+                            @if (Model.HasPreviousPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" href="@Url.Action("Index", new { page = Model.PageNumber - 1, keyword = ViewBag.CurrentKeyword, orderDate = ViewBag.CurrentOrderDate })">Previous</a>
+                                </li>
+                            }
+
+                            @for (int i = 1; i <= Model.PageCount; i++)
+                            {
+                                if (i == Model.PageNumber)
+                                {
+                                    <li class="page-item active">
+                                        <span class="page-link">@i</span>
+                                    </li>
+                                }
+                                else
+                                {
+                                    <li class="page-item">
+                                        <a class="page-link" href="@Url.Action("Index", new { page = i, keyword = ViewBag.CurrentKeyword, orderDate = ViewBag.CurrentOrderDate })">@i</a>
+                                    </li>
+                                }
+                            }
+
+                            @if (Model.HasNextPage)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link" href="@Url.Action("Index", new { page = Model.PageNumber + 1, keyword = ViewBag.CurrentKeyword, orderDate = ViewBag.CurrentOrderDate })">Next</a>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+
+        </div>
+    </div>
 </div>

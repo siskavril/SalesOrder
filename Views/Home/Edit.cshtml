@@ -1,0 +1,299 @@
+﻿@model SalesOrder.ViewModels.OrderDataViewModel
+
+@{
+    ViewData["Title"] = "EDIT";
+}
+
+<style>
+    th {
+        text-align: center;
+        font-size: small;
+    }
+</style>
+
+<form id="salesOrderForm" asp-action="Update" method="post">
+    <input type="hidden" name="Id" value="@Model.Id" />
+    <input type="hidden" name="DeletedItems" id="DeletedItems" />
+
+    <!-- Prevent default form submission -->
+    <div class="text-white" style="padding-bottom:30px;text-align:center;">
+        <h1>Sales Order Information</h1>
+    </div>
+
+    <div style="padding:30px;">
+        <table width="100%" class="text-white">
+            <tr>
+                <td width="40%">
+                    <div class="form-group">
+                        <label>Sales Order Number <span class="text-danger">*</span></label>
+                        <input type="text" placeholder="Input Here" aria-label="SalesOrder" class="form-control form-control-sm" name="SalesOrder" value="@Model.SalesOrder" />
+                    </div>
+                </td>
+                <td width="10%"></td> <!-- Spacer -->
+                <td width="50%">
+                    <div class="form-group">
+                        <label>Customer <span class="text-danger">*</span></label>
+                        <select id="customer" aria-label="Customer" class="form-control form-control-sm" name="IdCustomer">
+                            @foreach (var item in (IEnumerable<SelectListItem>)ViewBag.ListCustomer)
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td width="40%">
+                    <div class="form-group">
+                        <label>Order Date <span class="text-danger">*</span></label>
+                        <input type="date" aria-label="OrderDate" class="form-control form-control-sm" name="OrderDate" value="@Model.OrderDate.ToString("yyyy-MM-dd")" />
+                    </div>
+                </td>
+                <td width="10%"></td> <!-- Spacer -->
+                <td width="50%">
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="address" aria-label="Address" class="form-control form-control-sm" name="Address" placeholder="Input Here">@Model.Address</textarea>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="text-white" style="padding-left:30px;padding-right:30px;">
+        <h1 style="text-align:center;">Detail Information</h1>
+    </div>
+
+    <!-- Table for Items -->
+    <div class="row" style="padding:30px;">
+        <!-- Add Item Button -->
+        <div class="col-lg-12 col-md-12 col-sm-12">
+            <button type="button" class="btn text-white" style="background-color:darkred;" onclick="addItem()">Add Item</button>
+        </div>
+        <br />
+        <br />
+        <div class="col-lg-12 col-md-12 col-sm-12">
+            <div class="card">
+                <div class="card-body table-responsive p-0">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <table id="tableList" class="table table-bordered table-striped" style="font-size:small;text-align:center;width:100%">
+                                <thead style="background-color:midnightblue;" class="text-white">
+                                    <tr>
+                                        <th width="10%">Action</th>
+                                        <th width="5%">No</th>
+                                        <th width="25%">Item Name</th>
+                                        <th width="10%">Qty</th>
+                                        <th width="25%">Price</th>
+                                        <th width="25%">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemList">
+                                    @if (Model.ListOrderDataDetail != null)
+                                    {
+                                        @foreach (var item in Model.ListOrderDataDetail)
+                                        {
+                                            <tr id="row-edit-@item.Id">
+                                                <td>
+                                                    <button type="button" class="btn btn-warning btn-sm" onclick="editRow(@item.Id)" id="edit-btn-@item.Id">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(@item.Id)" id="save-btn-@item.Id" style="display:none;">
+                                                        <i class="fas fa-save"></i>
+                                                    </button>
+
+                                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(@item.Id, this)" id="delete-btn-@item.Id">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                                <td>@item.Id</td>
+                                                <td><input class="form-control form-control-sm" type="text" value="@item.ItemName" disabled id="itemName-@item.Id"></td>
+                                                <td><input class="form-control form-control-sm" type="number" value="@item.Qty" id="qty-@item.Id" onchange="updateTotals(@item.Id)" disabled></td>
+                                                <td><input class="form-control form-control-sm" type="number" value="@item.Price" id="price-@item.Id" onchange="updateTotals(@item.Id)" disabled></td>
+                                                <td id="total-@item.Id">@String.Format("{0:N2}", item.Total)</td>
+                                            </tr>
+                                        }
+                                    }
+                                    <!-- Dynamic rows will be added here -->
+                                </tbody>
+                            </table>
+                            <hr />
+                            <table width="100%">
+                                <tr>
+                                    <td width="50%"></td>
+                                    <td>Total Item : <span id="totalQty">@ViewBag.TotalItem</span></td>
+                                    <td>Total Amount : <span id="totalAmount">@ViewBag.TotalAmount</span></td>
+                                </tr>
+                            </table>
+                            <hr />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save All Button -->
+    <div style="text-align:center;">
+        <input type="submit" value="Save" class="btn text-white" onclick="saveAllData()" style="background-color:darkred;" />
+        <a asp-action="Index" class="btn text-white" style="background-color:darkblue;">Close</a>
+    </div>
+
+    <script>
+        let totalItems = 0;  // Total quantity
+        let totalAmount = 0; // Total amount
+
+        var listDelete = [];
+
+        // Function to add a new item row
+        function addItem() {
+            const itemIndex = document.querySelectorAll('#itemList tr').length + 1; // Dynamic index based on existing rows
+            const tableRow = `
+                            <tr id="row-new-${itemIndex}">
+                                <td>
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${itemIndex})" id="edit-btn-${itemIndex}" style="display:none;">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${itemIndex}, this)" id="save-btn-${itemIndex}" style="display:inline-block;" disabled>
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${itemIndex}, this)" id="delete-btn-${itemIndex}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                                <td></td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm" id="itemName-${itemIndex}" placeholder="Item Name" oninput="checkRowValidity(${itemIndex})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm" id="qty-${itemIndex}" placeholder="Qty" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm" id="price-${itemIndex}" placeholder="Price" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                                </td>
+                                <td id="total-${itemIndex}"></td>
+                            </tr>
+                        `;
+            document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
+        }
+
+        // Function to check the validity of a row and enable/disable the save button
+        function checkRowValidity(itemIndex) {
+            const itemName = document.getElementById(`itemName-${itemIndex}`).value.trim();
+            const qty = parseFloat(document.getElementById(`qty-${itemIndex}`).value);
+            const price = parseFloat(document.getElementById(`price-${itemIndex}`).value);
+
+            // Check if the fields are valid (not empty and greater than 0)
+            if (itemName !== '' && !isNaN(qty) && qty > 0 && !isNaN(price) && price > 0) {
+                document.getElementById(`save-btn-${itemIndex}`).disabled = false; // Enable the save button
+            } else {
+                document.getElementById(`save-btn-${itemIndex}`).disabled = true; // Disable the save button
+            }
+        }
+
+        // Function to update totals when Qty or Price is changed
+        function updateTotals(itemId) {
+            const qtyInput = document.getElementById(`qty-${itemId}`);
+            const priceInput = document.getElementById(`price-${itemId}`);
+            const totalCell = document.getElementById(`total-${itemId}`);
+
+            const qty = parseFloat(qtyInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+
+            const total = qty * price;
+            totalCell.innerText = formatNumber(total);
+
+            // After calculating, also check the row validity
+            checkRowValidity(itemId);
+
+        }
+
+        // Function to save a row (called when "Save" is clicked)
+        function saveRow(itemId) {
+            const itemName = document.getElementById(`itemName-${itemId}`).value;
+            const qty = parseFloat(document.getElementById(`qty-${itemId}`).value) || 0;
+            const price = parseFloat(document.getElementById(`price-${itemId}`).value) || 0;
+            const total = qty * price;
+
+            // Check if fields are not empty or invalid
+            if (qty <= 0 || price <= 0 || (itemName == null || itemName == "")) {
+                alert("Please enter valid values for item name, quantity, and price.");
+                return; // Do not proceed if validation fails
+            }
+
+            // Disable the input fields after saving
+            document.getElementById(`itemName-${itemId}`).disabled = true;
+            document.getElementById(`qty-${itemId}`).disabled = true;
+            document.getElementById(`price-${itemId}`).disabled = true;
+
+            // Update the total cell with formatted value
+            document.getElementById(`total-${itemId}`).innerText = formatNumber(total);
+
+            // Hide the "Save" button and show the "Edit" and "Delete" buttons
+            document.getElementById(`edit-btn-${itemId}`).style.display = 'inline-block';
+            document.getElementById(`save-btn-${itemId}`).style.display = 'none';
+            document.getElementById(`delete-btn-${itemId}`).style.display = 'inline-block';
+
+
+
+            // Update the overall totals (total items and total amount)
+            updateGrandTotal();
+        }
+
+
+        // Function to format numbers as 246,000.00
+        function formatNumber(num) {
+            let str = num.toFixed(2).replace('.', ',');
+            let parts = str.split(',');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return parts.join(',');
+        }
+
+        // Function to update the grand total when items are added/edited
+        function updateGrandTotal() {
+            const rows = document.querySelectorAll('[id^="row"]');
+            let totalQty = 0;
+            let totalAmount = 0;
+
+            rows.forEach(row => {
+                const qtyInput = row.querySelector('input[id^="qty"]');
+                const priceInput = row.querySelector('input[id^="price"]');
+
+                if (qtyInput && priceInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    const price = parseFloat(priceInput.value) || 0;
+
+                    totalQty += qty;
+                    totalAmount += qty * price;
+                }
+            });
+
+            document.getElementById('totalQty').innerText = totalQty;
+            document.getElementById('totalAmount').innerText = formatNumber(totalAmount);
+        }
+
+        // Function to delete a row
+        function deleteRow(itemId, button) {
+            const row = document.getElementById(`row-edit-${itemId}`) || document.getElementById(`row-new-${itemId}`);
+            if (row) {
+                row.remove();
+                updateGrandTotal();
+                listDelete.push(itemId);
+                document.getElementById('DeletedItems').value = listDelete.join(',');
+            }
+        }
+
+        // Function to edit a row
+        function editRow(itemId) {
+            const row = document.getElementById(`row-edit-${itemId}`) || document.getElementById(`row-new-${itemId}`);
+            if (row) {
+                const inputs = row.querySelectorAll('input');
+                inputs.forEach(input => input.disabled = false);
+
+                document.getElementById(`edit-btn-${itemId}`).style.display = 'none';
+                document.getElementById(`save-btn-${itemId}`).style.display = 'inline-block';
+            }
+        }
+    </script>
+</form>

@@ -1,0 +1,119 @@
+﻿@using X.PagedList
+@model X.PagedList.IPagedList<SalesOrder.ViewModels.CustomerViewModel>
+
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+@Html.AntiForgeryToken()
+
+<style>
+    th {
+        text-align: center;
+        font-size: small;
+    }
+    /* Custom styles for the modal dialog */
+    .modal-dialog-custom {
+        max-width: 800px; /* Set your desired width */
+    }
+
+    .my-custom-card {
+        border: 1px solid #343a40; /* Dark border color */
+        border-radius: 0.25rem; /* Optional: adjust the border radius */
+    }
+
+        .my-custom-card .card-body {
+            background-color: #ffffff; /* Optional: background color for the card body */
+        }
+
+</style>
+
+<div class="row">
+    <div class="col-lg-12 col-md-12 col-sm-12">
+        <div class="card">
+            <form>
+                <div class="card-header" style="background-color:steelblue;">
+                    <div class="row">
+                        <div class="col-lg-6 col-md-6">
+                            <a class="btn text-white" data-toggle="modal" data-target="#modal-create" style="background-color:darkred;">Create</a>
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                        </div>
+                        <div class="col-lg-3 col-md-3">
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <form method="post" asp-action="Create" asp-controller="Customer">
+                <div class="modal fade" id="modal-create">
+                    <div class="modal-dialog modal-dialog-custom">
+                        <div class="modal-content bg-primary">
+                            <div class="modal-header">
+                                <h4 class="modal-title"><i class="fas fa-plus"></i> Create</h4>
+                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <div class="card card-info">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label style="color:black;">Name</label>
+                                                            <input name="name" type="text" placeholder="Input Name Here" class="form-control">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <!-- /.card-body -->
+                                        </div>
+                                        <!-- /.card -->
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer justify-content-between">
+                                <button type="button" class="btn btn-outline-light" data-dismiss="modal">Cancel</button>
+                                <input type="submit" value="Create New Customer" class="btn btn-outline-light float-right">
+                            </div>
+                        </div>
+                        <!-- /.modal-content -->
+                    </div>
+                    <!-- /.modal-dialog -->
+                </div>
+            </form>
+            <div class="card-body table-responsive p-0">
+                <div class="row">
+                    <div class="col-md-12">
+                        <table id="tableList" class="table table-bordered table-striped" style="font-size:small;text-align:center;width:100%">
+                            <thead style="background-color:midnightblue;">
+                                <tr>
+                                    <th class="text-white">Id</th>
+                                    <th class="text-white">Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model)
+                                {
+                                    <tr>
+                                        <td>
+                                            @item.Id
+                                        </td>
+                                        <td>
+                                            @item.Name
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer">
+                Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount
+            </div>
+        </div>
+    </div>
+</div>

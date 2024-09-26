@@ -1,0 +1,221 @@
+﻿@using X.PagedList
+@model X.PagedList.IPagedList<SalesOrder.ViewModels.OrderDataViewModel>
+
+@{
+    ViewData["Title"] = "ADD NEW";
+}
+
+<style>
+    th {
+        text-align: center;
+        font-size: small;
+    }
+</style>
+
+<form id="salesOrderForm" asp-action="Create" method="post">
+    <!-- Prevent default form submission -->
+    <div class="text-white" style="padding-bottom:30px;text-align:center;">
+        <h1>Sales Order Information</h1>
+    </div>
+
+    <div style="padding:30px;">
+        <table width="100%" class="text-white">
+            <tr>
+                <td width="40%">
+                    <div class="form-group">
+                        <label>Sales Order Number <span class="text-danger">*</span></label>
+                        <input type="text" placeholder="Input Here" aria-label="SalesOrder" class="form-control form-control-sm" name="salesOrder" />
+                    </div>
+                </td>
+                <td width="10%"></td> <!-- Spacer -->
+                <td width="50%">
+                    <div class="form-group">
+                        <label>Customer <span class="text-danger">*</span></label>
+                        <select id="customer" aria-label="Customer" class="form-control form-control-sm" name="IdCustomer">
+                            <option value="">Select One</option>
+                            @foreach (var item in (IEnumerable<SelectListItem>)ViewBag.ListCustomer)
+                            {
+                                <option value="@item.Value">@item.Text</option>
+                            }
+                        </select>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td width="40%">
+                    <div class="form-group">
+                        <label>Order Date <span class="text-danger">*</span></label>
+                        <input type="date" aria-label="OrderDate" class="form-control form-control-sm" name="OrderDate" />
+                    </div>
+                </td>
+                <td width="10%"></td> <!-- Spacer -->
+                <td width="50%">
+                    <div class="form-group">
+                        <label>Address</label>
+                        <textarea id="address" aria-label="Address" class="form-control form-control-sm" name="Address" placeholder="Input Here"></textarea>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="text-white" style="padding-left:30px;padding-right:30px;">
+        <h1 style="text-align:center;">Detail Information</h1>
+    </div>
+
+    <!-- Table for Items -->
+    <div class="row" style="padding:30px;">
+        <!-- Add Item Button -->
+        <div class="col-lg-12 col-md-12 col-sm-12">
+            <button type="button" class="btn text-white" style="background-color:darkred;" onclick="addItem()">Add Item</button>
+        </div>
+        <br />
+        <br />
+        <div class="col-lg-12 col-md-12 col-sm-12">
+            <div class="card">
+                <div class="card-body table-responsive p-0">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <table id="tableList" class="table table-bordered table-striped" style="font-size:small;text-align:center;width:100%">
+                                <thead style="background-color:midnightblue;" class="text-white">
+                                    <tr>
+                                        <th width="5%">No</th>
+                                        <th width="25%">Item Name</th>
+                                        <th width="15%">Qty</th>
+                                        <th width="25%">Price</th>
+                                        <th width="25%">Total</th>
+                                        <th width="5%">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemList">
+                                    <!-- Dynamic rows will be added here -->
+                                </tbody>
+                            </table>
+                            <hr />
+                            <table width="100%">
+                                <tr>
+                                    <td width="50%"></td>
+                                    <td>Total Item : <span id="totalQty">0</span></td>
+                                    <td>Total Amount : <span id="totalAmount">0</span></td>
+                                </tr>
+                            </table>
+                            <hr />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save All Button -->
+    <div style="text-align:center;">
+        <input type="submit" value="Save" class="btn text-white" onclick="saveAllData()" style="background-color:darkred;"/>
+        <a asp-action="Index" class="btn text-white" style="background-color:darkblue;">Close</a>
+    </div>
+
+    <script>
+        let itemIndex = 1;
+        let totalItems = 0; // Total quantity
+        let totalAmount = 0; // Total amount
+
+        // Function to add a new item row
+        function addItem() {
+            const tableRow = `
+                <tr id="row${itemIndex}">
+                    <td>${itemIndex}</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" id="itemName${itemIndex}" placeholder="Item Name" oninput="updateHiddenFields(${itemIndex}); checkRowValidity(${itemIndex})">
+                        <input type="hidden" name="ListOrderDataDetail[${itemIndex - 1}].ItemName" id="hiddenItemName${itemIndex}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" id="itemQty${itemIndex}" placeholder="Qty" oninput="updateHiddenFields(${itemIndex}); checkRowValidity(${itemIndex})">
+                        <input type="hidden" name="ListOrderDataDetail[${itemIndex - 1}].Qty" id="hiddenItemQty${itemIndex}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" id="itemPrice${itemIndex}" placeholder="Price" oninput="updateHiddenFields(${itemIndex}); checkRowValidity(${itemIndex})">
+                        <input type="hidden" name="ListOrderDataDetail[${itemIndex - 1}].Price" id="hiddenItemPrice${itemIndex}">
+                    </td>
+                    <td id="total${itemIndex}"></td>
+                    <td>
+                        <button class="btn btn-primary btn-sm" id="saveButton${itemIndex}" onclick="saveRow(${itemIndex}, this)" disabled>
+                            <i class="fas fa-save"></i> <!-- Save icon -->
+                        </button>
+                    </td>
+                </tr>
+            `;
+            document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
+            itemIndex++;
+        }
+
+        // Function to check the validity of a row and enable/disable the save button
+        function checkRowValidity(index) {
+            const itemName = document.getElementById(`itemName${index}`).value.trim();
+            const qty = parseFloat(document.getElementById(`itemQty${index}`).value);
+            const price = parseFloat(document.getElementById(`itemPrice${index}`).value);
+
+            // Check if the fields are valid (not empty and greater than 0)
+            if (itemName !== '' && !isNaN(qty) && qty > 0 && !isNaN(price) && price > 0) {
+                document.getElementById(`saveButton${index}`).disabled = false; // Enable the save button
+            } else {
+                document.getElementById(`saveButton${index}`).disabled = true; // Disable the save button
+            }
+        }
+
+
+        function updateHiddenFields(index) {
+            const itemName = document.getElementById(`itemName${index}`).value;
+            const itemQty = document.getElementById(`itemQty${index}`).value;
+            const itemPrice = document.getElementById(`itemPrice${index}`).value;
+
+            // Update hidden fields
+            document.getElementById(`hiddenItemName${index}`).value = itemName;
+            document.getElementById(`hiddenItemQty${index}`).value = itemQty;
+            document.getElementById(`hiddenItemPrice${index}`).value = itemPrice;
+        }
+
+
+        // Function to format numbers as 246,000,00
+        function formatNumber(num) {
+            let str = num.toFixed(2).replace('.', ',');
+            let parts = str.split(',');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            return parts.join(',');
+        }
+
+        // Function to save individual row
+        function saveRow(index, button) {
+            const qty = parseFloat(document.getElementById(`itemQty${index}`).value);
+            const price = parseFloat(document.getElementById(`itemPrice${index}`).value);
+            const total = qty * price;
+
+            // Format total after saving
+            const formattedTotal = formatNumber(total);
+
+            // Update the display
+            document.getElementById(`total${index}`).innerText = formattedTotal;
+
+            // Update overall totals
+            totalItems += qty;
+            totalAmount += total;
+
+            // Update totals in the table
+            document.getElementById("totalQty").innerText = totalItems; // Display total qty
+            document.getElementById("totalAmount").innerText = formatNumber(totalAmount); // Display total amount
+
+            // Disable inputs after saving
+            document.getElementById(`itemName${index}`).disabled = true;
+            document.getElementById(`itemQty${index}`).disabled = true;
+            document.getElementById(`itemPrice${index}`).disabled = true;
+
+            // Disable the save button
+            button.disabled = true; // Disable the save button
+            button.innerHTML = '<i class="fas fa-check"></i> Saved'; // Change icon to indicate saved state
+        }
+
+        function saveAllData() {
+            console.log("Saving all data...");
+            // Additional logic to save all data can be added here
+        }
+    </script>
+
+</form>
