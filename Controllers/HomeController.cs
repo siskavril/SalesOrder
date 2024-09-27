@@ -226,12 +226,12 @@ namespace SalesOrder.Controllers
                     listDetail.Add(detail);
 
                     totalItem = totalItem + item.Qty;
-                    totalAmount = totalAmount + item.Price;
+                    totalAmount = totalAmount + item.Total;
                 }
                 vm.ListOrderDataDetail = listDetail;
 
                 ViewData["TotalItem"] = totalItem;
-                ViewData["TotalAmount"] = totalAmount;
+                ViewData["TotalAmount"] = @String.Format("{0:N2}", totalAmount);
             }
 
             return View(vm);
@@ -267,7 +267,7 @@ namespace SalesOrder.Controllers
             _context.Update(order);
             await _context.SaveChangesAsync();
 
-            if (orderData.ListOrderDataDetail != null)
+            if (orderData.ListOrderDataDetail != null && orderData.ListOrderDataDetail.Any())
             {
                 // Update existing details
                 foreach (var detail in orderData.ListOrderDataDetail!)
