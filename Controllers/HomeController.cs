@@ -35,6 +35,12 @@ namespace SalesOrder.Controllers
         {
             ViewData["CurrentKeyword"] = keyword;
             ViewData["CurrentOrderDate"] = orderDate.ToString("yyyy-MM-dd");
+            ViewData["CurrentSort"] = sortOrder;
+
+            ViewData["Id"] = sortOrder == "Id_a" ? "Id_d" : "Id_a";
+            ViewData["SalesOrder"] = sortOrder == "SalesOrder_a" ? "SalesOrder_d" : "SalesOrder_a";
+            ViewData["OrderDate"] = sortOrder == "OrderDate_a" ? "OrderDate_d" : "OrderDate_a";
+            ViewData["Name"] = sortOrder == "Name_a" ? "Name_d" : "Name_a";
 
             // Getting initial list
             var listOrderData = from od in _context.OrderData
@@ -46,6 +52,29 @@ namespace SalesOrder.Controllers
                                     od.OrderDate,
                                     cst.Name
                                 };
+
+            //sorting
+            listOrderData = sortOrder switch
+            {
+                // by Id
+                "Id_a" => listOrderData = listOrderData.OrderBy(s => s.Id),
+                "Id_d" => listOrderData = listOrderData.OrderByDescending(s => s.Id),
+
+                // by SalesOrder
+                "SalesOrder_a" => listOrderData = listOrderData.OrderBy(s => s.SalesOrder),
+                "SalesOrder_d" => listOrderData = listOrderData.OrderByDescending(s => s.SalesOrder),
+
+                // by OrderDate
+                "OrderDate_a" => listOrderData = listOrderData.OrderBy(s => s.OrderDate),
+                "OrderDate_d" => listOrderData = listOrderData.OrderByDescending(s => s.OrderDate),
+
+                // by Name
+                "Name_a" => listOrderData = listOrderData.OrderBy(s => s.Name),
+                "Name_d" => listOrderData = listOrderData.OrderByDescending(s => s.Name),
+
+                // by Default Id 
+                _ => listOrderData = listOrderData.OrderByDescending(s => s.Id)
+            };
 
             // Searching with keyword and order date
             if (!string.IsNullOrEmpty(keyword) || orderDate != DateTime.MinValue)
@@ -232,6 +261,7 @@ namespace SalesOrder.Controllers
 
                 ViewData["TotalItem"] = totalItem;
                 ViewData["TotalAmount"] = @String.Format("{0:N2}", totalAmount);
+                ViewData["ListOrderDataDetailJson"] = JsonConvert.SerializeObject(vm.ListOrderDataDetail);
             }
 
             return View(vm);
@@ -259,6 +289,17 @@ namespace SalesOrder.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Update(OrderDataViewModel orderData)
         {
+            // Deserialize the JSON data from the hidden fields
+            if (!string.IsNullOrEmpty(Request.Form["ListOrderDataDetail"]))
+            {
+                orderData.ListOrderDataDetail = JsonConvert.DeserializeObject<List<OrderDataDetailViewModel>>(Request.Form["ListOrderDataDetail"]!);
+            }
+
+            if (!string.IsNullOrEmpty(Request.Form["ListOrderDataDetailNew"]))
+            {
+                orderData.ListOrderDataDetailNew = JsonConvert.DeserializeObject<List<OrderDataDetailViewModel>>(Request.Form["ListOrderDataDetailNew"]!);
+            }
+
             var order = _context.OrderData.Where(i => i.Id == orderData.Id).Single();
             order.SalesOrder = orderData.SalesOrder;
             order.OrderDate = orderData.OrderDate;
@@ -269,45 +310,48 @@ namespace SalesOrder.Controllers
 
             if (orderData.ListOrderDataDetail != null && orderData.ListOrderDataDetail.Any())
             {
-                // Update existing details
+                // Update existing details only if values have changed
                 foreach (var detail in orderData.ListOrderDataDetail!)
                 {
-                    if (detail.Id > 0) // Existing items
+                    var existingDetail = await _context.OrderDataDetail.FindAsync(detail.Id);
+                    // Check if any values have changed
+                    if (existingDetail!.ItemName != detail.ItemName ||
+                        existingDetail.Qty != detail.Qty ||
+                        existingDetail.Price != detail.Price)
                     {
-                        var existingDetail = await _context.OrderDataDetail.FindAsync(detail.Id);
-                        if (existingDetail != null)
-                        {
-                            existingDetail.ItemName = detail.ItemName;
-                            existingDetail.Qty = detail.Qty;
-                            existingDetail.Price = detail.Price;
-                            existingDetail.Total = detail.Total;
-                        }
-                    }
-                    else // New items
-                    {
-                        OrderDataDetail newDetail = new()
-                        {
-                            IdOrderData = order.Id,
-                            ItemName = detail.ItemName,
-                            Qty = detail.Qty,
-                            Price = detail.Price,
-                            Total = detail.Qty * detail.Price
-                        };
-                        _context.OrderDataDetail.Add(newDetail);
+                        // Update only if there are changes
+                        existingDetail.ItemName = detail.ItemName;
+                        existingDetail.Qty = detail.Qty;
+                        existingDetail.Price = detail.Price;
+                        existingDetail.Total = detail.Qty * detail.Price;
                     }
                 }
             }
 
+            if (orderData.ListOrderDataDetailNew != null && orderData.ListOrderDataDetailNew.Any())
+            {
+                // Update existing details
+                foreach (var detail in orderData.ListOrderDataDetailNew!)
+                {
+                    OrderDataDetail newDetail = new()
+                    {
+                        IdOrderData = order.Id,
+                        ItemName = detail.ItemName,
+                        Qty = detail.Qty,
+                        Price = detail.Price,
+                        Total = detail.Qty * detail.Price
+                    };
+                    _context.OrderDataDetail.Add(newDetail);
+                }
+            }
+
             // Handle deleted items
-            if (orderData.DeletedItems != null)
+            if (orderData.DeletedItems != null && orderData.DeletedItems.Any())
             {
                 foreach (var itemId in orderData.DeletedItems)
                 {
                     var detailToDelete = await _context.OrderDataDetail.FindAsync(itemId);
-                    if (detailToDelete != null)
-                    {
-                        _context.OrderDataDetail.Remove(detailToDelete);
-                    }
+                    _context.OrderDataDetail.Remove(detailToDelete!);
                 }
             }
 
@@ -322,7 +366,7 @@ namespace SalesOrder.Controllers
         {
             // Retrieve data to export
             var listOrderData = from od in _context.OrderData
-                                join cst in _context.Customer on od.Id equals cst.Id
+                                join cst in _context.Customer on od.IdCustomer equals cst.Id
                                 select new
                                 {
                                     od.Id,

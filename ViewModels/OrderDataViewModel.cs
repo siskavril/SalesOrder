@@ -12,6 +12,7 @@ namespace SalesOrder.ViewModels
         public string? Address { get; set; }
 
         public List<OrderDataDetailViewModel>? ListOrderDataDetail { get; set; }
+        public List<OrderDataDetailViewModel>? ListOrderDataDetailNew { get; set; }
         public List<int>? DeletedItems { get; set; } = new List<int>();
 
     }

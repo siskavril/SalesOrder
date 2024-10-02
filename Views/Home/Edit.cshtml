@@ -14,6 +14,8 @@
 <form id="salesOrderForm" asp-action="Update" method="post">
     <input type="hidden" name="Id" value="@Model.Id" />
     <input type="hidden" name="DeletedItems" id="DeletedItems" />
+    <input type="hidden" name="ListOrderDataDetail" id="ListOrderDataDetail" />
+    <input type="hidden" name="ListOrderDataDetailNew" id="ListOrderDataDetailNew" />
 
     <!-- Prevent default form submission -->
     <div class="text-white" style="padding-bottom:30px;text-align:center;">
@@ -89,32 +91,6 @@
                                     </tr>
                                 </thead>
                                 <tbody id="itemList">
-                                    @if (Model.ListOrderDataDetail != null)
-                                    {
-                                        @foreach (var item in Model.ListOrderDataDetail)
-                                        {
-                                            <tr id="row-edit-@item.Id">
-                                                <td>
-                                                    <button type="button" class="btn btn-warning btn-sm" onclick="editRow(@item.Id)" id="edit-btn-@item.Id">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-
-                                                    <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(@item.Id)" id="save-btn-@item.Id" style="display:none;">
-                                                        <i class="fas fa-save"></i>
-                                                    </button>
-
-                                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(@item.Id, this)" id="delete-btn-@item.Id">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </td>
-                                                <td>@item.Id</td>
-                                                <td><input class="form-control form-control-sm" type="text" value="@item.ItemName" disabled id="itemName-@item.Id"></td>
-                                                <td><input class="form-control form-control-sm" type="number" value="@item.Qty" id="qty-@item.Id" onchange="updateTotals(@item.Id)" disabled></td>
-                                                <td><input class="form-control form-control-sm" type="number" value="@item.Price" id="price-@item.Id" onchange="updateTotals(@item.Id)" disabled></td>
-                                                <td id="total-@item.Id">@String.Format("{0:N2}", item.Total)</td>
-                                            </tr>
-                                        }
-                                    }
                                     <!-- Dynamic rows will be added here -->
                                 </tbody>
                             </table>
@@ -136,7 +112,7 @@
 
     <!-- Save All Button -->
     <div style="text-align:center;">
-        <input type="submit" value="Save" class="btn text-white" onclick="saveAllData()" style="background-color:darkred;" />
+        <input type="submit" value="Save" class="btn text-white" style="background-color:darkred;" />
         <a asp-action="Index" class="btn text-white" style="background-color:darkblue;">Close</a>
     </div>
 
@@ -145,36 +121,70 @@
         let totalAmount = 0; // Total amount
 
         var listDelete = [];
+        var orderDataDetails = @Html.Raw(ViewBag.ListOrderDataDetailJson); // Existing data
+
+        // On page load, populate existing items
+        window.onload = function () {
+            orderDataDetails.forEach(function (item, index) {
+                addExistingItem(item, index + 1);
+            });
+        };
+
+        // Function to add an existing item row
+        function addExistingItem(item, index) {
+            const tableRow = `
+                <tr id="row-edit-${item.Id}">
+                    <td>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${item.Id})" id="edit-btn-${item.Id}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${item.Id})" id="save-btn-${item.Id}" style="display:none;">
+                            <i class="fas fa-save"></i>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${item.Id}, this)" id="delete-btn-${item.Id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                    <td>${index}</td>
+                    <td><input class="form-control form-control-sm" type="text" value="${item.ItemName}" disabled id="itemName-${item.Id}"></td>
+                    <td><input class="form-control form-control-sm" type="number" value="${item.Qty}" id="qty-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
+                    <td><input class="form-control form-control-sm" type="number" value="${item.Price}" id="price-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
+                    <td id="total-${item.Id}">${formatNumber(item.Total)}</td>
+                </tr>
+            `;
+            document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
+        }
+
 
         // Function to add a new item row
         function addItem() {
             const itemIndex = document.querySelectorAll('#itemList tr').length + 1; // Dynamic index based on existing rows
             const tableRow = `
-                            <tr id="row-new-${itemIndex}">
-                                <td>
-                                    <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${itemIndex})" id="edit-btn-${itemIndex}" style="display:none;">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${itemIndex}, this)" id="save-btn-${itemIndex}" style="display:inline-block;" disabled>
-                                        <i class="fas fa-save"></i>
-                                    </button>
-                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${itemIndex}, this)" id="delete-btn-${itemIndex}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                                <td></td>
-                                <td>
-                                    <input type="text" class="form-control form-control-sm" id="itemName-${itemIndex}" placeholder="Item Name" oninput="checkRowValidity(${itemIndex})">
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control form-control-sm" id="qty-${itemIndex}" placeholder="Qty" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
-                                </td>
-                                <td>
-                                    <input type="number" class="form-control form-control-sm" id="price-${itemIndex}" placeholder="Price" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
-                                </td>
-                                <td id="total-${itemIndex}"></td>
-                            </tr>
-                        `;
+                    <tr id="row-new-${itemIndex}">
+                        <td>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${itemIndex})" id="edit-btn-${itemIndex}" style="display:none;">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${itemIndex}, this)" id="save-btn-${itemIndex}" style="display:inline-block;" disabled>
+                                <i class="fas fa-save"></i>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${itemIndex}, this)" id="delete-btn-${itemIndex}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                        <td>${itemIndex}</td>
+                        <td>
+                            <input type="text" class="form-control form-control-sm" id="itemName-${itemIndex}" placeholder="Item Name" oninput="checkRowValidity(${itemIndex})">
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" id="qty-${itemIndex}" placeholder="Qty" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm" id="price-${itemIndex}" placeholder="Price" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                        </td>
+                        <td id="total-${itemIndex}"></td>
+                    </tr>
+                `;
             document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
         }
 
@@ -184,7 +194,6 @@
             const qty = parseFloat(document.getElementById(`qty-${itemIndex}`).value);
             const price = parseFloat(document.getElementById(`price-${itemIndex}`).value);
 
-            // Check if the fields are valid (not empty and greater than 0)
             if (itemName !== '' && !isNaN(qty) && qty > 0 && !isNaN(price) && price > 0) {
                 document.getElementById(`save-btn-${itemIndex}`).disabled = false; // Enable the save button
             } else {
@@ -206,7 +215,6 @@
 
             // After calculating, also check the row validity
             checkRowValidity(itemId);
-
         }
 
         // Function to save a row (called when "Save" is clicked)
@@ -217,7 +225,7 @@
             const total = qty * price;
 
             // Check if fields are not empty or invalid
-            if (qty <= 0 || price <= 0 || (itemName == null || itemName == "")) {
+            if (qty <= 0 || price <= 0 || itemName === "") {
                 alert("Please enter valid values for item name, quantity, and price.");
                 return; // Do not proceed if validation fails
             }
@@ -235,12 +243,9 @@
             document.getElementById(`save-btn-${itemId}`).style.display = 'none';
             document.getElementById(`delete-btn-${itemId}`).style.display = 'inline-block';
 
-
-
             // Update the overall totals (total items and total amount)
             updateGrandTotal();
         }
-
 
         // Function to format numbers as 246,000.00
         function formatNumber(num) {
@@ -275,12 +280,19 @@
 
         // Function to delete a row
         function deleteRow(itemId, button) {
-            const row = document.getElementById(`row-edit-${itemId}`) || document.getElementById(`row-new-${itemId}`);
-            if (row) {
-                row.remove();
+            const rowEdit = document.getElementById(`row-edit-${itemId}`); // Existing row
+            const rowNew = document.getElementById(`row-new-${itemId}`); // New row
+
+            if (rowEdit) {
+                // If it's an existing item, add its ID to the listDelete
+                rowEdit.remove();
                 updateGrandTotal();
-                listDelete.push(itemId);
+                listDelete.push(itemId); // Only push existing items to the delete list
                 document.getElementById('DeletedItems').value = listDelete.join(',');
+            } else if (rowNew) {
+                // If it's a new item, just remove the row without adding it to the delete list
+                rowNew.remove();
+                updateGrandTotal();
             }
         }
 
@@ -295,5 +307,66 @@
                 document.getElementById(`save-btn-${itemId}`).style.display = 'inline-block';
             }
         }
+
+        // Serialize existing items for form submission
+        function serializeExistingItems() {
+            const existingItems = [];
+            const rows = document.querySelectorAll('[id^="row-edit"]'); // Only existing rows
+
+            rows.forEach(row => {
+                const itemId = row.id.split('-')[2]; // Extract real ID
+                const itemName = document.getElementById(`itemName-${itemId}`).value;
+                const qty = parseFloat(document.getElementById(`qty-${itemId}`).value);
+                const price = parseFloat(document.getElementById(`price-${itemId}`).value);
+                const total = qty * price;
+
+                existingItems.push({
+                    Id: itemId,         // Ensure you're capturing the real ID here
+                    ItemName: itemName,
+                    Qty: qty,
+                    Price: price,
+                    Total: total
+                });
+            });
+
+            return existingItems;
+        }
+
+        // Serialize new items for form submission
+        function serializeNewItems() {
+            const newItems = [];
+            const rows = document.querySelectorAll('[id^="row-new"]'); // Only new rows
+
+            rows.forEach(row => {
+                const itemId = row.id.split('-')[2];
+                const itemName = document.getElementById(`itemName-${itemId}`).value;
+                const qty = parseFloat(document.getElementById(`qty-${itemId}`).value);
+                const price = parseFloat(document.getElementById(`price-${itemId}`).value);
+                const total = qty * price;
+
+                newItems.push({
+                    Id: 0, // New items should have 0 or no Id
+                    ItemName: itemName,
+                    Qty: qty,
+                    Price: price,
+                    Total: total
+                });
+            });
+
+            return newItems;
+        }
+
+        // On form submit, serialize existing and new items and populate hidden inputs
+        document.querySelector('form').onsubmit = function () {
+            const existingItems = serializeExistingItems();
+            const newItems = serializeNewItems();
+
+            console.log(existingItems);
+            console.log(newItems);
+            document.getElementById('ListOrderDataDetail').value = JSON.stringify(existingItems);
+            document.getElementById('ListOrderDataDetailNew').value = JSON.stringify(newItems);
+        };
     </script>
+
+
 </form>
