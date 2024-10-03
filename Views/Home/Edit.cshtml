@@ -38,7 +38,14 @@
                         <select id="customer" aria-label="Customer" class="form-control form-control-sm" name="IdCustomer">
                             @foreach (var item in (IEnumerable<SelectListItem>)ViewBag.ListCustomer)
                             {
-                                <option value="@item.Value">@item.Text</option>
+                                @if (item.Value == Model.IdCustomer.ToString())
+                                {
+                                    <option selected value="@item.Value">@item.Text</option>
+                                }
+                                else
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
                             }
                         </select>
                     </div>
@@ -133,25 +140,25 @@
         // Function to add an existing item row
         function addExistingItem(item, index) {
             const tableRow = `
-                <tr id="row-edit-${item.Id}">
-                    <td>
-                        <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${item.Id})" id="edit-btn-${item.Id}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${item.Id})" id="save-btn-${item.Id}" style="display:none;">
-                            <i class="fas fa-save"></i>
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${item.Id}, this)" id="delete-btn-${item.Id}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                    <td>${index}</td>
-                    <td><input class="form-control form-control-sm" type="text" value="${item.ItemName}" disabled id="itemName-${item.Id}"></td>
-                    <td><input class="form-control form-control-sm" type="number" value="${item.Qty}" id="qty-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
-                    <td><input class="form-control form-control-sm" type="number" value="${item.Price}" id="price-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
-                    <td id="total-${item.Id}">${formatNumber(item.Total)}</td>
-                </tr>
-            `;
+                        <tr id="row-edit-${item.Id}">
+                            <td>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${item.Id})" id="edit-btn-${item.Id}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${item.Id})" id="save-btn-${item.Id}" style="display:none;">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${item.Id}, this)" id="delete-btn-${item.Id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                            <td>${index}</td>
+                            <td><input class="form-control form-control-sm" type="text" value="${item.ItemName}" disabled id="itemName-${item.Id}"></td>
+                            <td><input class="form-control form-control-sm" type="number" value="${item.Qty}" id="qty-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
+                            <td><input class="form-control form-control-sm" type="number" value="${item.Price}" id="price-${item.Id}" onchange="updateTotals(${item.Id})" disabled></td>
+                            <td id="total-${item.Id}">${formatNumber(item.Total)}</td>
+                        </tr>
+                    `;
             document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
         }
 
@@ -160,31 +167,31 @@
         function addItem() {
             const itemIndex = document.querySelectorAll('#itemList tr').length + 1; // Dynamic index based on existing rows
             const tableRow = `
-                    <tr id="row-new-${itemIndex}">
-                        <td>
-                            <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${itemIndex})" id="edit-btn-${itemIndex}" style="display:none;">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${itemIndex}, this)" id="save-btn-${itemIndex}" style="display:inline-block;" disabled>
-                                <i class="fas fa-save"></i>
-                            </button>
-                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${itemIndex}, this)" id="delete-btn-${itemIndex}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                        <td>${itemIndex}</td>
-                        <td>
-                            <input type="text" class="form-control form-control-sm" id="itemName-${itemIndex}" placeholder="Item Name" oninput="checkRowValidity(${itemIndex})">
-                        </td>
-                        <td>
-                            <input type="number" class="form-control form-control-sm" id="qty-${itemIndex}" placeholder="Qty" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
-                        </td>
-                        <td>
-                            <input type="number" class="form-control form-control-sm" id="price-${itemIndex}" placeholder="Price" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
-                        </td>
-                        <td id="total-${itemIndex}"></td>
-                    </tr>
-                `;
+                            <tr id="row-new-${itemIndex}">
+                                <td>
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="editRow(${itemIndex})" id="edit-btn-${itemIndex}" style="display:none;">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-sm" onclick="saveRow(${itemIndex}, this)" id="save-btn-${itemIndex}" style="display:inline-block;" disabled>
+                                        <i class="fas fa-save"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(${itemIndex}, this)" id="delete-btn-${itemIndex}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                                <td>${itemIndex}</td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm" id="itemName-${itemIndex}" placeholder="Item Name" oninput="checkRowValidity(${itemIndex})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm" id="qty-${itemIndex}" placeholder="Qty" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control form-control-sm" id="price-${itemIndex}" placeholder="Price" onchange="checkRowValidity(${itemIndex}); updateTotals(${itemIndex})">
+                                </td>
+                                <td id="total-${itemIndex}"></td>
+                            </tr>
+                        `;
             document.getElementById("itemList").insertAdjacentHTML("beforeend", tableRow);
         }
 

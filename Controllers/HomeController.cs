@@ -155,38 +155,48 @@ namespace SalesOrder.Controllers
         {
             if (ModelState.IsValid)
             {
-                OrderData order = new()
-                {
-                    SalesOrder = orderData.SalesOrder,
-                    OrderDate = orderData.OrderDate,
-                    IdCustomer = orderData.IdCustomer,
-                    Address = orderData.Address,
-                };
-                _context.Add(order);
-                await _context.SaveChangesAsync();
+                var existing = _context.OrderData.Where(i => i.SalesOrder == orderData.SalesOrder && i.OrderDate == orderData.OrderDate && orderData.IdCustomer == i.IdCustomer);
 
-                if (!orderData.ListOrderDataDetail.IsNullOrEmpty())
+                if (existing.Any())
                 {
-                    foreach (var item in orderData.ListOrderDataDetail!)
-                    {
-                        OrderDataDetail detail = new()
-                        {
-                            IdOrderData = order.Id,
-                            ItemName = item.ItemName,
-                            Price = item.Price,
-                            Qty = item.Qty,
-                            Total = item.Qty * item.Price // Calculate total based on Qty and Price
-                        };
-                        _context.Add(detail); // Change this to add the detail, not the order
-                    }
-                    await _context.SaveChangesAsync(); // Save all details after the loop
+                    TempData[SD.Error] = "Available existing data with same data!";
+                    return RedirectToAction(nameof(Create));
                 }
+                else
+                {
+                    OrderData order = new()
+                    {
+                        SalesOrder = orderData.SalesOrder,
+                        OrderDate = orderData.OrderDate,
+                        IdCustomer = orderData.IdCustomer,
+                        Address = orderData.Address,
+                    };
+                    _context.Add(order);
+                    await _context.SaveChangesAsync();
 
-                TempData[SD.Success] = "Data Saved";
-                return RedirectToAction(nameof(Index));
+                    if (!orderData.ListOrderDataDetail.IsNullOrEmpty())
+                    {
+                        foreach (var item in orderData.ListOrderDataDetail!)
+                        {
+                            OrderDataDetail detail = new()
+                            {
+                                IdOrderData = order.Id,
+                                ItemName = item.ItemName,
+                                Price = item.Price,
+                                Qty = item.Qty,
+                                Total = item.Qty * item.Price // Calculate total based on Qty and Price
+                            };
+                            _context.Add(detail); // Change this to add the detail, not the order
+                        }
+                        await _context.SaveChangesAsync(); // Save all details after the loop
+                    }
+
+                    TempData[SD.Success] = "Data Saved";
+                    return RedirectToAction(nameof(Index));
+                }
             }
             TempData[SD.Error] = "Data not save, please check again!";
-            return View(orderData);
+            return RedirectToAction(nameof(Create));
         }
 
         // GET: Edit/5
@@ -300,65 +310,76 @@ namespace SalesOrder.Controllers
                 orderData.ListOrderDataDetailNew = JsonConvert.DeserializeObject<List<OrderDataDetailViewModel>>(Request.Form["ListOrderDataDetailNew"]!);
             }
 
-            var order = _context.OrderData.Where(i => i.Id == orderData.Id).Single();
-            order.SalesOrder = orderData.SalesOrder;
-            order.OrderDate = orderData.OrderDate;
-            order.IdCustomer = orderData.IdCustomer;
-            order.Address = orderData.Address;
-            _context.Update(order);
-            await _context.SaveChangesAsync();
+            var existing = _context.OrderData.Where(i => i.SalesOrder == orderData.SalesOrder && orderData.OrderDate == i.OrderDate && i.IdCustomer == orderData.IdCustomer && i.Id != orderData.Id);
 
-            if (orderData.ListOrderDataDetail != null && orderData.ListOrderDataDetail.Any())
+            if (existing.Any())
             {
-                // Update existing details only if values have changed
-                foreach (var detail in orderData.ListOrderDataDetail!)
+                TempData[SD.Error] = "Available existing data with same data!";
+                return RedirectToAction(nameof(Edit), new { orderData.Id });
+            }
+            else
+            {
+                var order = _context.OrderData.Where(i => i.Id == orderData.Id).Single();
+                order.SalesOrder = orderData.SalesOrder;
+                order.OrderDate = orderData.OrderDate;
+                order.IdCustomer = orderData.IdCustomer;
+                order.Address = orderData.Address;
+                _context.Update(order);
+                await _context.SaveChangesAsync();
+
+                if (orderData.ListOrderDataDetail != null && orderData.ListOrderDataDetail.Any())
                 {
-                    var existingDetail = await _context.OrderDataDetail.FindAsync(detail.Id);
-                    // Check if any values have changed
-                    if (existingDetail!.ItemName != detail.ItemName ||
-                        existingDetail.Qty != detail.Qty ||
-                        existingDetail.Price != detail.Price)
+                    // Update existing details only if values have changed
+                    foreach (var detail in orderData.ListOrderDataDetail!)
                     {
-                        // Update only if there are changes
-                        existingDetail.ItemName = detail.ItemName;
-                        existingDetail.Qty = detail.Qty;
-                        existingDetail.Price = detail.Price;
-                        existingDetail.Total = detail.Qty * detail.Price;
+                        var existingDetail = await _context.OrderDataDetail.FindAsync(detail.Id);
+                        // Check if any values have changed
+                        if (existingDetail!.ItemName != detail.ItemName ||
+                            existingDetail.Qty != detail.Qty ||
+                            existingDetail.Price != detail.Price)
+                        {
+                            // Update only if there are changes
+                            existingDetail.ItemName = detail.ItemName;
+                            existingDetail.Qty = detail.Qty;
+                            existingDetail.Price = detail.Price;
+                            existingDetail.Total = detail.Qty * detail.Price;
+                        }
                     }
                 }
-            }
 
-            if (orderData.ListOrderDataDetailNew != null && orderData.ListOrderDataDetailNew.Any())
-            {
-                // Update existing details
-                foreach (var detail in orderData.ListOrderDataDetailNew!)
+                if (orderData.ListOrderDataDetailNew != null && orderData.ListOrderDataDetailNew.Any())
                 {
-                    OrderDataDetail newDetail = new()
+                    // Update existing details
+                    foreach (var detail in orderData.ListOrderDataDetailNew!)
                     {
-                        IdOrderData = order.Id,
-                        ItemName = detail.ItemName,
-                        Qty = detail.Qty,
-                        Price = detail.Price,
-                        Total = detail.Qty * detail.Price
-                    };
-                    _context.OrderDataDetail.Add(newDetail);
+                        OrderDataDetail newDetail = new()
+                        {
+                            IdOrderData = order.Id,
+                            ItemName = detail.ItemName,
+                            Qty = detail.Qty,
+                            Price = detail.Price,
+                            Total = detail.Qty * detail.Price
+                        };
+                        _context.OrderDataDetail.Add(newDetail);
+                    }
                 }
-            }
 
-            // Handle deleted items
-            if (orderData.DeletedItems != null && orderData.DeletedItems.Any())
-            {
-                foreach (var itemId in orderData.DeletedItems)
+                // Handle deleted items
+                if (orderData.DeletedItems != null && orderData.DeletedItems.Any())
                 {
-                    var detailToDelete = await _context.OrderDataDetail.FindAsync(itemId);
-                    _context.OrderDataDetail.Remove(detailToDelete!);
+                    foreach (var itemId in orderData.DeletedItems)
+                    {
+                        var detailToDelete = await _context.OrderDataDetail.FindAsync(itemId);
+                        _context.OrderDataDetail.Remove(detailToDelete!);
+                    }
                 }
+
+                // Save changes
+                await _context.SaveChangesAsync();
+                TempData[SD.Success] = "Data saved successfully";
+                return RedirectToAction(nameof(Edit), new { orderData.Id });
             }
 
-            // Save changes
-            await _context.SaveChangesAsync();
-            TempData[SD.Success] = "Data saved successfully";
-            return RedirectToAction(nameof(Edit), new { orderData.Id });
         }
 
         [HttpGet]
